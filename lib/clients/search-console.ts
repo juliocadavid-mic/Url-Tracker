@@ -31,7 +31,7 @@ export async function fetchSearchConsoleMetrics(params: {
   startDate: string;
   endDate: string;
 }) {
-  const client = searchconsole({
+  const client = google.searchconsole({
     version: "v1",
     auth: getAuthClient()
   });
