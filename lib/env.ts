@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().optional(),
-  DIRECT_URL: z.string().optional(),
+  POSTGRES_PRISMA_URL: z.string().optional(),
+  POSTGRES_URL_NON_POOLING: z.string().optional(),
   AUTH_SECRET: z.string().optional(),
   AUTH_TRUST_HOST: z.string().optional(),
   AUTH_URL: z.string().url().optional(),
@@ -17,8 +17,8 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse({
-  DATABASE_URL: process.env.DATABASE_URL,
-  DIRECT_URL: process.env.DIRECT_URL,
+  POSTGRES_PRISMA_URL: process.env.POSTGRES_PRISMA_URL,
+  POSTGRES_URL_NON_POOLING: process.env.POSTGRES_URL_NON_POOLING,
   AUTH_SECRET: process.env.AUTH_SECRET,
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
   AUTH_URL: process.env.AUTH_URL,

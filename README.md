@@ -95,8 +95,8 @@ Para este stack, la ruta más simple es:
 
 Variables importantes:
 
-- `DATABASE_URL`: conexión pooled para runtime
-- `DIRECT_URL`: conexión directa para migraciones Prisma
+- `POSTGRES_PRISMA_URL`: conexión pooled para runtime con Prisma
+- `POSTGRES_URL_NON_POOLING`: conexión directa para migraciones Prisma
 - `AUTH_SECRET`: secreto largo aleatorio
 - `AUTH_TRUST_HOST=true`
 - `AUTH_URL`: URL pública de producción
