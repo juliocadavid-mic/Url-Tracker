@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  ANALYST
+  CLIENT
+}
+
+enum ProjectType {
+  ECOMMERCE
+  CONTENT
+  LOCAL
+  LEADGEN
+  CUSTOM
+}
+
+enum SeoNodeType {
+  PROJECT_ROOT
+  DEPARTMENT
+  CATEGORY
+  SUBCATEGORY
+  URL
+}
+
+enum KeywordIntent {
+  TRANSACTIONAL
+  INFORMATIONAL
+  NAVIGATIONAL
+  COMMERCIAL
+  BRANDED
+  OTHER
+}
+
+enum KeywordPriority {
+  PRIMARY
+  SECONDARY
+}
+
+enum IntegrationProvider {
+  GOOGLE_SEARCH_CONSOLE
+  SERPER
+}
+
+model User {
+  id             String           @id @default(cuid())
+  name           String?
+  email          String?          @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  accounts       Account[]
+  sessions       Session[]
+  memberships    AgencyMember[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model Account {
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?      @db.Text
+  access_token       String?      @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?      @db.Text
+  session_state      String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionToken])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Agency {
+  id            String              @id @default(cuid())
+  name          String
+  slug          String              @unique
+  members       AgencyMember[]
+  clients       Client[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model AgencyMember {
+  id         String         @id @default(cuid())
+  agencyId   String
+  userId     String
+  role       MembershipRole @default(ANALYST)
+  createdAt  DateTime       @default(now())
+  agency      Agency        @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, userId])
+}
+
+model Client {
+  id           String            @id @default(cuid())
+  agencyId     String
+  name         String
+  slug         String
+  notes        String?           @db.Text
+  projects     Project[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  agency       Agency            @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, slug])
+}
+
+model Project {
+  id                    String                  @id @default(cuid())
+  clientId              String
+  name                  String
+  slug                  String
+  type                  ProjectType             @default(ECOMMERCE)
+  primaryDomain         String
+  countryCode           String                  @default("co")
+  languageCode          String                  @default("es")
+  timezone              String                  @default("America/Bogota")
+  gscPropertyUrl        String?
+  isActive              Boolean                 @default(true)
+  seoNodes              SeoNode[]
+  keywords              Keyword[]
+  integrations          ProjectIntegration[]
+  keywordSnapshots      KeywordSnapshot[]
+  competitors           CompetitorDomain[]
+  syncRuns              SyncRun[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  client                Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, slug])
+}
+
+model SeoNode {
+  id                 String      @id @default(cuid())
+  projectId          String
+  parentId           String?
+  type               SeoNodeType
+  name               String
+  slug               String
+  fullPath           String
+  url                String?
+  sortOrder          Int         @default(0)
+  children           SeoNode[]   @relation("SeoNodeTree")
+  parent             SeoNode?    @relation("SeoNodeTree", fields: [parentId], references: [id], onDelete: Cascade)
+  project            Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  keywordTargets     KeywordTarget[]
+  urlSnapshots       UrlSnapshot[]
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@unique([projectId, fullPath])
+  @@index([projectId, parentId])
+}
+
+model Keyword {
+  id                String            @id @default(cuid())
+  projectId         String
+  term              String
+  normalizedTerm    String
+  intent            KeywordIntent     @default(OTHER)
+  isBranded         Boolean           @default(false)
+  localeCountry     String            @default("co")
+  localeLanguage    String            @default("es")
+  targets           KeywordTarget[]
+  snapshots         KeywordSnapshot[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, normalizedTerm, localeCountry, localeLanguage])
+  @@index([projectId, term])
+}
+
+model KeywordTarget {
+  id                 String           @id @default(cuid())
+  keywordId          String
+  seoNodeId          String
+  priority           KeywordPriority
+  notes              String?          @db.Text
+  createdAt          DateTime         @default(now())
+  keyword            Keyword          @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  seoNode            SeoNode          @relation(fields: [seoNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([keywordId, seoNodeId, priority])
+  @@index([seoNodeId])
+}
+
+model KeywordSnapshot {
+  id                     String      @id @default(cuid())
+  projectId              String
+  keywordId              String
+  seoNodeId              String?
+  snapshotDate           DateTime
+  gscAveragePosition     Float?
+  gscClicks              Int?
+  gscImpressions         Int?
+  gscCtr                 Float?
+  serpRank               Int?
+  serpUrl                String?
+  topCompetitorDomain    String?
+  createdAt              DateTime    @default(now())
+  project                Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  keyword                Keyword     @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  seoNode                SeoNode?    @relation(fields: [seoNodeId], references: [id], onDelete: SetNull)
+  competitors            CompetitorSnapshot[]
+
+  @@unique([keywordId, snapshotDate])
+  @@index([projectId, snapshotDate])
+}
+
+model UrlSnapshot {
+  id                 String      @id @default(cuid())
+  seoNodeId          String
+  snapshotDate       DateTime
+  gscClicks          Int?
+  gscImpressions     Int?
+  gscCtr             Float?
+  gscAveragePosition Float?
+  createdAt          DateTime    @default(now())
+  seoNode            SeoNode     @relation(fields: [seoNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([seoNodeId, snapshotDate])
+}
+
+model CompetitorDomain {
+  id                String       @id @default(cuid())
+  projectId         String
+  domain            String
+  displayName       String?
+  snapshots         CompetitorSnapshot[]
+  createdAt         DateTime     @default(now())
+  project           Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, domain])
+}
+
+model CompetitorSnapshot {
+  id                 String             @id @default(cuid())
+  keywordSnapshotId  String
+  competitorDomainId String
+  rank               Int
+  resultUrl          String
+  title              String?
+  createdAt          DateTime           @default(now())
+  keywordSnapshot    KeywordSnapshot    @relation(fields: [keywordSnapshotId], references: [id], onDelete: Cascade)
+  competitorDomain   CompetitorDomain   @relation(fields: [competitorDomainId], references: [id], onDelete: Cascade)
+
+  @@unique([keywordSnapshotId, competitorDomainId, rank])
+}
+
+model ProjectIntegration {
+  id             String               @id @default(cuid())
+  projectId      String
+  provider       IntegrationProvider
+  externalId     String?
+  metadata       Json?
+  isEnabled      Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  project        Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, provider])
+}
+
+model SyncRun {
+  id             String               @id @default(cuid())
+  projectId      String
+  provider       IntegrationProvider
+  startedAt      DateTime             @default(now())
+  finishedAt     DateTime?
+  status         String
+  message        String?              @db.Text
+  metadata       Json?
+  project        Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, provider, startedAt])
+}
