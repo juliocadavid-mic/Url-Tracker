@@ -1,7 +1,9 @@
-import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { BarChart3, FolderTree, Search, Users } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 
-const items = [
+const items: Array<{ href: Route; label: string; icon: LucideIcon }> = [
   {
     href: "/dashboard",
     label: "Overview",
