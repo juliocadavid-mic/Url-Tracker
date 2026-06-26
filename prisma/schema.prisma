@@ -177,6 +177,7 @@ model SeoNode {
   parent             SeoNode?    @relation("SeoNodeTree", fields: [parentId], references: [id], onDelete: Cascade)
   project            Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   keywordTargets     KeywordTarget[]
+  keywordSnapshots   KeywordSnapshot[]
   urlSnapshots       UrlSnapshot[]
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
